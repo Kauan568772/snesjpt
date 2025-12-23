@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -39,12 +39,8 @@ jobs:
           # FORCE CLEANUP: Remove existing config and android folder to prevent "already initialized" errors
           rm -f capacitor.config.ts capacitor.config.json
           rm -rf android
-
-          # Install Capacitor dependencies locally for this build
-          npm install @capacitor/core @capacitor/cli @capacitor/android
           
           # Initialize Capacitor Project
-          # We use the standard command without deprecated flags
           npx cap init "SNES Mobile" "com.retropocket.snes" --web-dir dist
           
           # Add Android Platform
