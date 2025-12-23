@@ -14,29 +14,17 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
   const fpsRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<EmulatorStatus>(EmulatorStatus.LOADING);
 
-  // Force Fullscreen helper
+  // Force Fullscreen helper - Auto-triggered on load
   const enterFullscreen = () => {
     const elem = document.documentElement;
     if (elem.requestFullscreen) {
-      elem.requestFullscreen().catch((err) => console.log('Fullscreen blocked:', err));
+      elem.requestFullscreen().catch((err) => console.log('Fullscreen blocked (expected if no gesture):', err));
     } else if ((elem as any).webkitRequestFullscreen) { /* Safari/Chrome */
       (elem as any).webkitRequestFullscreen();
     } else if ((elem as any).mozRequestFullScreen) { /* Firefox */
       (elem as any).mozRequestFullScreen();
     } else if ((elem as any).msRequestFullscreen) { /* IE/Edge */
       (elem as any).msRequestFullscreen();
-    }
-  };
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
-      enterFullscreen();
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if ((document as any).webkitExitFullscreen) {
-        (document as any).webkitExitFullscreen();
-      }
     }
   };
 
@@ -83,7 +71,7 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
       }
 
       try {
-        // Attempt fullscreen on launch (might be blocked by browser without user gesture)
+        // Attempt fullscreen on launch automatically
         enterFullscreen();
 
         // Nostalgist configuration
@@ -148,13 +136,6 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
     Object.defineProperty(event, 'which', { get: () => keyCode });
 
     document.dispatchEvent(event);
-    
-    // Retry fullscreen on input if not active (many browsers require user interaction)
-    // We only try this once or if obviously not fullscreen to avoid jarring transitions
-    if (pressed && !document.fullscreenElement && !(document as any).webkitFullscreenElement) {
-       // Optional: We could force it here, but it can be annoying. 
-       // Better to rely on the manual toggle if the initial auto-launch failed.
-    }
   };
 
   return (
@@ -189,20 +170,7 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
               
               <div className="w-px h-3 bg-white/20"></div>
 
-              {/* Fullscreen Toggle */}
-              <button 
-                onClick={toggleFullscreen} 
-                className="text-white hover:text-blue-400 active:scale-90 transition-transform p-1"
-                aria-label="Toggle Fullscreen"
-              >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                  </svg>
-              </button>
-
-              <div className="w-px h-3 bg-white/20"></div>
-
-              {/* Exit Button */}
+              {/* Exit Button - Fullscreen button removed for APK/Standalone feel */}
               <button 
                 onClick={onExit} 
                 className="text-[10px] font-bold text-red-400 hover:text-red-300 active:scale-95 transition-transform tracking-wider"
