@@ -17,6 +17,12 @@
     <!-- Nostalgist: A wrapper for RetroArch/Emscripten to run emulators -->
     <script src="https://unpkg.com/nostalgist@0.5.0/dist/nostalgist.umd.js"></script>
     <style>
+      :root {
+        --sat: env(safe-area-inset-top);
+        --sar: env(safe-area-inset-right);
+        --sab: env(safe-area-inset-bottom);
+        --sal: env(safe-area-inset-left);
+      }
       /* Custom scrollbar for library */
       ::-webkit-scrollbar {
         width: 4px;
@@ -35,9 +41,19 @@
         -webkit-touch-callout: none;
         -webkit-user-select: none;
         user-select: none;
+        /* Ensure background fills the notch area */
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
       }
       .image-pixelated {
         image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
+      .safe-area-inset {
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
       }
     </style>
   <script type="importmap">
