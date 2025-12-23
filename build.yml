@@ -43,11 +43,11 @@ jobs:
           npm install @capacitor/core @capacitor/cli @capacitor/android
           
           # Initialize Capacitor Project
-          # We use || true to prevent failure if it's already initialized
-          npx cap init "SNES Mobile" "com.retropocket.snes" --web-dir dist --npm-client npm || true
+          # Removed --npm-client flag as it is invalid in current versions
+          npx cap init "SNES Mobile" "com.retropocket.snes" --web-dir dist
           
           # Add Android Platform
-          npx cap add android || true
+          npx cap add android
 
           # Sync config
           npx cap sync android
