@@ -18,9 +18,25 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
   const enterFullscreen = () => {
     const elem = document.documentElement;
     if (elem.requestFullscreen) {
-      elem.requestFullscreen().catch((err) => console.log(err));
-    } else if ((elem as any).webkitRequestFullscreen) { /* Safari */
+      elem.requestFullscreen().catch((err) => console.log('Fullscreen blocked:', err));
+    } else if ((elem as any).webkitRequestFullscreen) { /* Safari/Chrome */
       (elem as any).webkitRequestFullscreen();
+    } else if ((elem as any).mozRequestFullScreen) { /* Firefox */
+      (elem as any).mozRequestFullScreen();
+    } else if ((elem as any).msRequestFullscreen) { /* IE/Edge */
+      (elem as any).msRequestFullscreen();
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+      enterFullscreen();
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      }
     }
   };
 
@@ -40,8 +56,8 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
       if (now - lastTime >= 1000) {
         if (fpsRef.current) {
           // Calculate approximate FPS
-          fpsRef.current.innerText = `FPS: ${frameCount}`;
-          fpsRef.current.style.color = frameCount < 58 ? 'yellow' : '#00ff00';
+          fpsRef.current.innerText = `FPS:${frameCount}`;
+          fpsRef.current.style.color = frameCount < 58 ? '#fbbf24' : '#4ade80'; // yellow vs green
         }
         frameCount = 0;
         lastTime = now;
@@ -67,7 +83,7 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
       }
 
       try {
-        // Attempt fullscreen on launch
+        // Attempt fullscreen on launch (might be blocked by browser without user gesture)
         enterFullscreen();
 
         // Nostalgist configuration
@@ -134,8 +150,10 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
     document.dispatchEvent(event);
     
     // Retry fullscreen on input if not active (many browsers require user interaction)
-    if (pressed && !document.fullscreenElement) {
-        enterFullscreen();
+    // We only try this once or if obviously not fullscreen to avoid jarring transitions
+    if (pressed && !document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+       // Optional: We could force it here, but it can be annoying. 
+       // Better to rely on the manual toggle if the initial auto-launch failed.
     }
   };
 
@@ -150,33 +168,55 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
         
         {/* Loading Overlay */}
         {status === EmulatorStatus.LOADING && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black text-white">
-             <p className="text-xl font-mono animate-pulse">LOADING SYSTEM...</p>
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur text-white">
+             <div className="w-8 h-8 border-2 border-t-transparent border-white rounded-full animate-spin mb-4"></div>
+             <p className="text-sm font-mono tracking-widest animate-pulse">BOOTING SYSTEM...</p>
           </div>
         )}
 
         {/* The Emulator Canvas */}
         <canvas ref={canvasRef} className="block w-full h-full object-contain image-pixelated" />
 
-        {/* FPS Counter - Fixed Position and High Z-Index */}
-        <div 
-            ref={fpsRef} 
-            className="absolute top-2 right-4 z-[100] font-mono text-sm bg-black/50 px-2 py-1 text-green-400 border border-white/20"
-        >
-            FPS: ..
+        {/* Top Toolbar (System Controls & FPS) */}
+        {/* Placed in top center to avoid shoulder buttons L/R */}
+        <div className="absolute top-0 left-0 w-full flex justify-center pt-2 z-[100] pointer-events-none">
+          <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 flex items-center gap-4 pointer-events-auto shadow-lg transition-opacity opacity-70 hover:opacity-100">
+              
+              {/* FPS Display */}
+              <div ref={fpsRef} className="font-mono text-[10px] min-w-[40px] text-center font-bold">
+                  --
+              </div>
+              
+              <div className="w-px h-3 bg-white/20"></div>
+
+              {/* Fullscreen Toggle */}
+              <button 
+                onClick={toggleFullscreen} 
+                className="text-white hover:text-blue-400 active:scale-90 transition-transform p-1"
+                aria-label="Toggle Fullscreen"
+              >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+              </button>
+
+              <div className="w-px h-3 bg-white/20"></div>
+
+              {/* Exit Button */}
+              <button 
+                onClick={onExit} 
+                className="text-[10px] font-bold text-red-400 hover:text-red-300 active:scale-95 transition-transform tracking-wider"
+              >
+                  EXIT
+              </button>
+          </div>
         </div>
+
       </div>
 
       {/* Mobile Controls */}
       <VirtualController onInput={handleInput} />
 
-      {/* Menu Button */}
-      <button 
-        onClick={onExit}
-        className="absolute top-4 left-1/2 -translate-x-1/2 z-[100] text-gray-400 px-4 py-2 text-xs font-bold border border-gray-600 bg-black/40"
-      >
-        EXIT
-      </button>
     </div>
   );
 };
