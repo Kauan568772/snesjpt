@@ -13,7 +13,6 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
   const emulatorInstance = useRef<any>(null);
   const wakeLockRef = useRef<any>(null);
   const fpsRef = useRef<HTMLDivElement>(null);
-  const requestRef = useRef<number>(0);
   const [status, setStatus] = useState<EmulatorStatus>(EmulatorStatus.LOADING);
 
   // Function to request wake lock (keep screen on)
@@ -27,26 +26,34 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
     }
   };
 
-  // FPS Counter Logic
-  const startFpsLoop = () => {
+  // FPS Counter Effect
+  useEffect(() => {
+    if (status !== EmulatorStatus.RUNNING) return;
+
+    let frameCount = 0;
     let lastTime = performance.now();
-    let frames = 0;
+    let animId: number;
 
     const loop = () => {
       const now = performance.now();
-      frames++;
+      frameCount++;
 
       if (now - lastTime >= 1000) {
         if (fpsRef.current) {
-          fpsRef.current.innerText = `FPS: ${frames}`;
+          fpsRef.current.innerText = `FPS: ${frameCount}`;
         }
-        frames = 0;
+        frameCount = 0;
         lastTime = now;
       }
-      requestRef.current = requestAnimationFrame(loop);
+      animId = requestAnimationFrame(loop);
     };
-    requestRef.current = requestAnimationFrame(loop);
-  };
+
+    animId = requestAnimationFrame(loop);
+
+    return () => {
+      cancelAnimationFrame(animId);
+    };
+  }, [status]);
 
   useEffect(() => {
     let isMounted = true;
@@ -81,7 +88,6 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
 
         if (isMounted) {
           setStatus(EmulatorStatus.RUNNING);
-          startFpsLoop();
           window.focus();
         }
       } catch (err: any) {
@@ -106,7 +112,6 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
     return () => {
       isMounted = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      cancelAnimationFrame(requestRef.current);
       
       if (wakeLockRef.current) {
         wakeLockRef.current.release().catch(() => {});
@@ -160,11 +165,11 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
         {/* The Emulator Canvas */}
         <canvas ref={canvasRef} className="block w-full h-full object-contain image-pixelated" />
 
-        {/* FPS Counter */}
+        {/* FPS Counter - Now rendered with higher z-index and guaranteed correct ref usage */}
         {status === EmulatorStatus.RUNNING && (
           <div 
             ref={fpsRef} 
-            className="absolute top-4 right-4 z-40 text-[#00ff00] font-mono text-xs bg-black/50 px-2 py-1 rounded backdrop-blur-sm pointer-events-none"
+            className="absolute top-2 right-4 z-[70] text-[#00ff00] font-mono text-[10px] bg-black/60 px-2 py-1 rounded backdrop-blur-md pointer-events-none border border-white/10 shadow-lg"
           >
             FPS: --
           </div>
@@ -174,10 +179,10 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
       {/* Mobile Controls Overlay - Handles its own safe area logic */}
       <VirtualController onInput={handleInput} />
 
-      {/* Minimalist Exit Button */}
+      {/* Minimalist Exit Button - Adjusted position to be less intrusive */}
       <button 
         onClick={onExit}
-        className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] text-gray-400 px-4 py-1 text-[10px] font-mono border border-gray-800 bg-black/40 hover:bg-white hover:text-black transition-colors rounded-full backdrop-blur-md active:scale-95"
+        className="absolute top-2 left-1/2 -translate-x-1/2 z-[70] text-white/40 px-3 py-1 text-[9px] font-bold tracking-widest border border-white/10 bg-black/20 hover:bg-white/10 hover:text-white transition-all rounded-full backdrop-blur-md active:scale-95 active:bg-white/20"
       >
         MENU
       </button>

@@ -109,14 +109,14 @@ const VirtualController: React.FC<VirtualControllerProps> = ({ onInput }) => {
   // Reusable styled button
   const ActionButton = ({ id, className, children, colorClass = "bg-gray-800" }: any) => (
     <div
-      className={`absolute flex items-center justify-center select-none transition-all active:scale-90 pointer-events-auto shadow-lg shadow-black/50 ${className} ${colorClass}`}
+      className={`absolute flex items-center justify-center select-none transition-all active:scale-90 pointer-events-auto shadow-lg shadow-black/30 backdrop-blur-sm ${className} ${colorClass}`}
       onTouchStart={(e) => handleBtnStart(id, e)}
       onTouchEnd={(e) => handleBtnEnd(id, e)}
       onMouseDown={(e) => handleBtnStart(id, e)}
       onMouseUp={(e) => handleBtnEnd(id, e)}
       onMouseLeave={(e) => handleBtnEnd(id, e)}
     >
-      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/20 to-transparent pointer-events-none"></div>
+      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-transparent pointer-events-none"></div>
       {children}
     </div>
   );
@@ -128,15 +128,15 @@ const VirtualController: React.FC<VirtualControllerProps> = ({ onInput }) => {
       <div className="w-full flex justify-between px-2 pt-2">
           <div 
             onTouchStart={(e) => handleBtnStart('L', e)} onTouchEnd={(e) => handleBtnEnd('L', e)}
-            className="w-32 h-14 bg-gradient-to-b from-gray-600 to-gray-800 rounded-bl-3xl rounded-tr-md border-t border-l border-gray-500 shadow-xl active:bg-gray-700 pointer-events-auto flex items-center justify-center ml-2"
+            className="w-32 h-14 bg-gray-800/40 backdrop-blur-md rounded-bl-3xl rounded-tr-md border-t border-l border-white/10 shadow-lg active:bg-gray-700/60 pointer-events-auto flex items-center justify-center ml-2 transition-colors"
           >
-             <span className="text-gray-300 font-bold text-lg drop-shadow-md">L</span>
+             <span className="text-white/60 font-bold text-lg drop-shadow-md">L</span>
           </div>
           <div 
             onTouchStart={(e) => handleBtnStart('R', e)} onTouchEnd={(e) => handleBtnEnd('R', e)}
-            className="w-32 h-14 bg-gradient-to-b from-gray-600 to-gray-800 rounded-br-3xl rounded-tl-md border-t border-r border-gray-500 shadow-xl active:bg-gray-700 pointer-events-auto flex items-center justify-center mr-2"
+            className="w-32 h-14 bg-gray-800/40 backdrop-blur-md rounded-br-3xl rounded-tl-md border-t border-r border-white/10 shadow-lg active:bg-gray-700/60 pointer-events-auto flex items-center justify-center mr-2 transition-colors"
           >
-             <span className="text-gray-300 font-bold text-lg drop-shadow-md">R</span>
+             <span className="text-white/60 font-bold text-lg drop-shadow-md">R</span>
           </div>
       </div>
 
@@ -160,17 +160,17 @@ const VirtualController: React.FC<VirtualControllerProps> = ({ onInput }) => {
              className="absolute inset-0 flex items-center justify-center pointer-events-none transition-transform duration-75"
            >
               {/* D-Pad Base Cross */}
-              <div className="relative w-40 h-40">
-                <div className="absolute left-1/2 top-0 bottom-0 w-14 -translate-x-1/2 bg-gradient-to-b from-gray-700 to-gray-900 rounded shadow-black shadow-md border border-gray-600"></div>
-                <div className="absolute top-1/2 left-0 right-0 h-14 -translate-y-1/2 bg-gradient-to-b from-gray-700 to-gray-900 rounded shadow-black shadow-md border border-gray-600"></div>
+              <div className="relative w-40 h-40 opacity-80">
+                <div className="absolute left-1/2 top-0 bottom-0 w-14 -translate-x-1/2 bg-gradient-to-b from-gray-700 to-gray-900 rounded shadow-black shadow-md border border-gray-600/50 backdrop-blur-sm"></div>
+                <div className="absolute top-1/2 left-0 right-0 h-14 -translate-y-1/2 bg-gradient-to-b from-gray-700 to-gray-900 rounded shadow-black shadow-md border border-gray-600/50 backdrop-blur-sm"></div>
                 {/* Center Circle */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 inset-shadow"></div>
                 
                 {/* Arrows */}
-                <div className="absolute top-2 left-1/2 -translate-x-1/2 text-black/50 text-xl">▲</div>
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-black/50 text-xl">▼</div>
-                <div className="absolute left-2 top-1/2 -translate-y-1/2 text-black/50 text-xl">◀</div>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 text-black/50 text-xl">▶</div>
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 text-white/30 text-xl">▲</div>
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-white/30 text-xl">▼</div>
+                <div className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30 text-xl">◀</div>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 text-xl">▶</div>
               </div>
            </div>
         </div>
@@ -180,14 +180,14 @@ const VirtualController: React.FC<VirtualControllerProps> = ({ onInput }) => {
            <div className="flex flex-col items-center gap-1">
              <div 
                 onTouchStart={(e) => handleBtnStart('SELECT', e)} onTouchEnd={(e) => handleBtnEnd('SELECT', e)}
-                className="w-16 h-6 rounded-full bg-gray-700 border border-gray-500 shadow-inner transform -rotate-12 active:scale-95"
+                className="w-16 h-6 rounded-full bg-gray-700/80 border border-gray-500/50 shadow-inner transform -rotate-12 active:scale-95 active:bg-gray-600"
              ></div>
              <span className="text-[10px] tracking-widest text-gray-500 font-bold">SELECT</span>
            </div>
            <div className="flex flex-col items-center gap-1">
              <div 
                 onTouchStart={(e) => handleBtnStart('START', e)} onTouchEnd={(e) => handleBtnEnd('START', e)}
-                className="w-16 h-6 rounded-full bg-gray-700 border border-gray-500 shadow-inner transform -rotate-12 active:scale-95"
+                className="w-16 h-6 rounded-full bg-gray-700/80 border border-gray-500/50 shadow-inner transform -rotate-12 active:scale-95 active:bg-gray-600"
              ></div>
              <span className="text-[10px] tracking-widest text-gray-500 font-bold">START</span>
            </div>
@@ -196,13 +196,13 @@ const VirtualController: React.FC<VirtualControllerProps> = ({ onInput }) => {
         {/* --- ACTION BUTTONS (ABXY) --- */}
         <div className="relative w-56 h-56 pointer-events-auto transform rotate-[-15deg] mb-4 mr-2">
             {/* Background container for buttons */}
-            <div className="absolute inset-4 rounded-full bg-gray-900/40 backdrop-blur-sm -z-10 border border-white/5"></div>
+            <div className="absolute inset-4 rounded-full bg-gray-900/20 backdrop-blur-sm -z-10 border border-white/5"></div>
 
             {/* X - Top - Blue */}
             <ActionButton 
               id="X" 
-              className="top-0 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-b-4 border-blue-900" 
-              colorClass="bg-blue-600"
+              className="top-0 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-b-4 border-blue-900/50" 
+              colorClass="bg-blue-600/80"
             >
                <span className="text-xl font-bold text-blue-100/90">X</span>
             </ActionButton>
@@ -210,8 +210,8 @@ const VirtualController: React.FC<VirtualControllerProps> = ({ onInput }) => {
             {/* A - Right - Red */}
             <ActionButton 
               id="A" 
-              className="top-1/2 right-0 -translate-y-1/2 w-16 h-16 rounded-full border-b-4 border-red-900" 
-              colorClass="bg-red-600"
+              className="top-1/2 right-0 -translate-y-1/2 w-16 h-16 rounded-full border-b-4 border-red-900/50" 
+              colorClass="bg-red-600/80"
             >
                <span className="text-xl font-bold text-red-100/90">A</span>
             </ActionButton>
@@ -219,8 +219,8 @@ const VirtualController: React.FC<VirtualControllerProps> = ({ onInput }) => {
             {/* Y - Left - Green */}
             <ActionButton 
               id="Y" 
-              className="top-1/2 left-0 -translate-y-1/2 w-16 h-16 rounded-full border-b-4 border-green-900" 
-              colorClass="bg-green-600"
+              className="top-1/2 left-0 -translate-y-1/2 w-16 h-16 rounded-full border-b-4 border-green-900/50" 
+              colorClass="bg-green-600/80"
             >
                <span className="text-xl font-bold text-green-100/90">Y</span>
             </ActionButton>
@@ -228,8 +228,8 @@ const VirtualController: React.FC<VirtualControllerProps> = ({ onInput }) => {
             {/* B - Bottom - Yellow */}
             <ActionButton 
               id="B" 
-              className="bottom-0 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-b-4 border-yellow-900" 
-              colorClass="bg-yellow-500"
+              className="bottom-0 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-b-4 border-yellow-900/50" 
+              colorClass="bg-yellow-500/80"
             >
                <span className="text-xl font-bold text-yellow-100/90">B</span>
             </ActionButton>
