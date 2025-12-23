@@ -26,12 +26,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          # Cache requires package-lock.json, which we don't have committed.
-          # We disable caching to prevent the "Dependencies lock file is not found" error.
-          # cache: 'npm'
 
       - name: Install Dependencies
-        # We use 'npm install' instead of 'npm ci' because we don't have a package-lock.json file.
+        # Using npm install instead of ci to avoid lockfile errors
         run: npm install
 
       - name: Build Web App
@@ -39,17 +36,21 @@ jobs:
 
       - name: Setup Capacitor & Android
         run: |
+          # FORCE CLEANUP: Remove existing config and android folder to prevent "already initialized" errors
+          rm -f capacitor.config.ts capacitor.config.json
+          rm -rf android
+
           # Install Capacitor dependencies locally for this build
           npm install @capacitor/core @capacitor/cli @capacitor/android
           
           # Initialize Capacitor Project
-          # Removed --npm-client flag as it is invalid in current versions
+          # We use the standard command without deprecated flags
           npx cap init "SNES Mobile" "com.retropocket.snes" --web-dir dist
           
           # Add Android Platform
           npx cap add android
 
-          # Sync config
+          # Sync config (copies web assets to android native project)
           npx cap sync android
 
       - name: Build Android APK (Debug)
