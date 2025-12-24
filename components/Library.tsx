@@ -81,7 +81,7 @@ const Library: React.FC<LibraryProps> = ({ onSelectRom }) => {
 
         {/* Footer Info */}
         <div className="text-[10px] text-gray-600 font-mono text-center uppercase tracking-wider">
-          <p>Core: Snes9x 2005</p>
+          <p>Core: Snes9x</p>
           <p className="mt-1 opacity-50">Use 'Add to Home Screen' for full experience</p>
         </div>
 

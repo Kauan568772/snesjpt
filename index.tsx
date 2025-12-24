@@ -8,7 +8,6 @@ if (!rootElement) {
 
 const root = ReactDOM.createRoot(rootElement);
 root.render(
-  // StrictMode removed to prevent double-initialization of Nostalgist in dev mode, 
-  // which can cause issues with WASM memory allocation in some contexts.
+  // StrictMode removed to prevent double-initialization of Nostalgist in dev mode
   <App />
 );

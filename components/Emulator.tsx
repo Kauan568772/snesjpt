@@ -18,13 +18,11 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Helper to show temporary messages
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2000);
   };
 
-  // Robust Fullscreen Handler
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) {
@@ -40,12 +38,10 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
         }
       }
     } catch (err) {
-      console.error("Fullscreen toggle failed:", err);
-      // Fallback is handled by CSS (fixed inset-0)
+      // Silently fail
     }
   };
 
-  // FPS Counter Logic
   useEffect(() => {
     let frameCount = 0;
     let lastTime = performance.now();
@@ -77,7 +73,6 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
     };
   }, []);
 
-  // Initialize Emulator
   useEffect(() => {
     let isMounted = true;
 
@@ -88,13 +83,11 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
       }
 
       try {
-        // Try auto-fullscreen on mount (might be blocked by browser policy)
-        toggleFullscreen().catch(() => {});
-
+        // IMPORTANT: Pass the File object directly to preserve filename
         emulatorInstance.current = await window.Nostalgist.launch({
           element: canvasRef.current,
-          rom: rom.file,
-          core: 'snes9x2005', 
+          rom: rom.file, 
+          core: 'snes9x', 
           runForever: true,
           style: {
              width: '100%',
@@ -134,28 +127,76 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rom]); 
 
-  // Save State Logic
   const handleSaveState = async () => {
     if (!emulatorInstance.current) return;
+    
     try {
       showToast("Saving...");
-      const stateBlob = await emulatorInstance.current.saveState();
+      
+      const result = await emulatorInstance.current.saveState();
+      
+      if (!result) {
+        throw new Error("Emulator returned null result");
+      }
+
+      let blobCandidate = result;
+
+      // Handle object return type { state: Blob, thumbnail: ... }
+      // This fixes the "Core returned object: {"state":{},...}" error
+      if (result && typeof result === 'object' && 'state' in result) {
+         blobCandidate = result.state;
+      }
+
+      let stateBlob: Blob;
+
+      // Robust check for return types (Blob vs Uint8Array vs Object)
+      if (blobCandidate instanceof Blob) {
+        stateBlob = blobCandidate;
+      } else if (blobCandidate instanceof Uint8Array || blobCandidate instanceof ArrayBuffer) {
+        stateBlob = new Blob([blobCandidate]);
+      } else {
+         // If it's a generic object, it might be an error or a wrapper.
+         console.error("Save returned non-standard object:", result);
+         
+         const json = JSON.stringify(result);
+         throw new Error(`Core returned object: ${json.substring(0, 50)}...`);
+      }
+
+      // VALIDATION
+      if (stateBlob.size < 1024) {
+        let errorContent = "";
+        try {
+           errorContent = await stateBlob.text();
+        } catch(e) { /* ignore */ }
+        console.error(`Core produced invalid state (${stateBlob.size} bytes). Content:`, errorContent);
+        throw new Error(`Save Failed: File too small (${stateBlob.size}b)`);
+      }
+
+      // Save to IndexedDB
       await saveStateToDB(rom.name, stateBlob);
+      
       showToast("State Saved!");
       setMenuOpen(false);
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error("Save failed:", e);
       showToast("Save Failed!");
     }
   };
 
-  // Load State Logic
   const handleLoadState = async () => {
     if (!emulatorInstance.current) return;
+    
     try {
       showToast("Loading...");
+      
       const stateBlob = await loadStateFromDB(rom.name);
+      
       if (stateBlob) {
+        if (stateBlob.size < 1024) {
+           showToast("Bad Save File");
+           return;
+        }
+
         await emulatorInstance.current.loadState(stateBlob);
         showToast("State Loaded!");
         setMenuOpen(false);
@@ -163,13 +204,12 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
         showToast("No Save Found");
       }
     } catch (e) {
-      console.error(e);
+      console.error("Load failed:", e);
       showToast("Load Failed!");
     }
   };
 
   const handleInput = (code: string, key: string, keyCode: number, pressed: boolean) => {
-    // Block input if menu is open
     if (menuOpen) return;
 
     const eventType = pressed ? 'keydown' : 'keyup';
@@ -192,13 +232,10 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
   return (
     <div className="fixed inset-0 w-full h-full bg-black flex flex-col items-center justify-center overflow-hidden select-none touch-none">
       
-      {/* Background fill */}
       <div className="absolute inset-0 bg-black z-0"></div>
 
-      {/* Main Game Container */}
       <div className="relative w-full h-full z-10 flex items-center justify-center">
         
-        {/* Loading Overlay */}
         {status === EmulatorStatus.LOADING && (
           <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur text-white">
              <div className="w-8 h-8 border-2 border-t-transparent border-white rounded-full animate-spin mb-4"></div>
@@ -206,17 +243,14 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
           </div>
         )}
 
-        {/* Toast Notification */}
         {toastMsg && (
           <div className="absolute top-16 z-[60] bg-gray-800/90 text-white px-4 py-2 rounded-full border border-white/20 shadow-xl animate-bounce-in font-mono text-sm">
             {toastMsg}
           </div>
         )}
 
-        {/* The Emulator Canvas */}
         <canvas ref={canvasRef} className="block w-full h-full object-contain image-pixelated" />
 
-        {/* Top HUD (FPS & Menu Toggle) */}
         <div className="absolute top-0 left-0 w-full flex justify-center pt-2 z-[100] pointer-events-none">
           <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-full pl-4 pr-1 py-1 flex items-center gap-3 pointer-events-auto shadow-lg">
               
@@ -237,7 +271,6 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
           </div>
         </div>
 
-        {/* Pause Menu Overlay */}
         {menuOpen && (
           <div className="absolute inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center">
             <div className="bg-[#1a1a1a] border border-gray-700 p-6 rounded-2xl w-64 shadow-2xl flex flex-col gap-3 animate-fade-in">
@@ -287,7 +320,6 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
 
       </div>
 
-      {/* Mobile Controls (Hidden when menu is open to prevent accidental clicks) */}
       <div className={`transition-opacity duration-300 ${menuOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
          <VirtualController onInput={handleInput} />
       </div>
