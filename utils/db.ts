@@ -1,140 +1,94 @@
-export const DB_NAME = 'RetroPocketDB';
-export const STORE_NAME = 'snes_states_v2';
-const DB_VERSION = 2;
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 
-// Helper: robustly convert any Blob-like/Buffer object to ArrayBuffer
-const blobToBuffer = async (data: any): Promise<ArrayBuffer> => {
-  if (!data) {
-    throw new Error("Data is null or undefined");
-  }
-
-  // 1. If it's already an ArrayBuffer, return it directly
-  if (data instanceof ArrayBuffer) {
-    return data;
-  }
-
-  // 2. If it's a TypedArray (like Uint8Array), return its underlying buffer
-  if (ArrayBuffer.isView(data)) {
-    return new Uint8Array(data.buffer, data.byteOffset, data.byteLength).slice().buffer;
-  }
-
-  // 3. Use the Response API (Modern & Robust)
-  try {
-    return await new Response(data).arrayBuffer();
-  } catch (e) {
-    // 4. Ultimate fallback: Try to reconstruct a clean Blob and use FileReader
-    console.warn("Response API failed, falling back to manual FileReader", e);
-    
-    return new Promise((resolve, reject) => {
-      try {
-        const safeBlob = new Blob([data], { type: data.type || 'application/octet-stream' });
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (reader.result instanceof ArrayBuffer) {
-            resolve(reader.result);
-          } else {
-            reject(new Error("FileReader result was not an ArrayBuffer"));
-          }
-        };
-        reader.onerror = () => reject(reader.error);
-        reader.readAsArrayBuffer(safeBlob);
-      } catch (err) {
-        reject(err);
-      }
-    });
-  }
-};
-
-export const openDB = (): Promise<IDBDatabase> => {
+// Helper: Convert Blob to Base64 (Required for Capacitor Filesystem)
+const blobToBase64 = (blob: Blob): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        // Remove the data URL prefix (e.g., "data:application/octet-stream;base64,")
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      } else {
+        reject(new Error("Failed to convert blob to base64"));
       }
     };
-
-    request.onsuccess = (event) => {
-      resolve((event.target as IDBOpenDBRequest).result);
-    };
-
-    request.onerror = (event) => {
-      console.error("DB Open Error:", (event.target as IDBOpenDBRequest).error);
-      reject((event.target as IDBOpenDBRequest).error);
-    };
+    reader.readAsDataURL(blob);
   });
 };
 
-export const saveStateToDB = async (romName: string, blob: any): Promise<void> => {
+// Helper: Convert Base64 string back to Blob
+const base64ToBlob = (base64: string, type = 'application/octet-stream'): Blob => {
+  const binStr = atob(base64);
+  const len = binStr.length;
+  const arr = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    arr[i] = binStr.charCodeAt(i);
+  }
+  return new Blob([arr], { type });
+};
+
+const SAVE_FOLDER = 'snes_saves';
+
+export const saveStateToDB = async (romName: string, blob: Blob): Promise<void> => {
   try {
-    console.log(`[DB] Preparing to save state for ${romName}...`);
-    
-    // 1. Convert input to ArrayBuffer safely
-    const arrayBuffer = await blobToBuffer(blob);
-    
-    console.log(`[DB] Converted to buffer. Size: ${arrayBuffer.byteLength} bytes`);
+    console.log(`[NativeFS] Preparing to save state for ${romName}...`);
 
-    // Validation: SNES states are complex. 15 bytes is definitely an error message or corruption.
-    // Minimum safe size guess: 1KB.
-    if (arrayBuffer.byteLength < 1024) {
-       console.error("Attempted to save suspicious state data (<1KB). Likely an FS error message.");
-       throw new Error("Invalid state data size: " + arrayBuffer.byteLength);
+    // Validation
+    if (blob.size < 1024) {
+      throw new Error("Invalid state data size: " + blob.size);
     }
-    
-    // 2. Open DB
-    const db = await openDB();
-    
-    // 3. Store the ArrayBuffer
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      
-      const data = {
-        rom: romName,
-        buffer: arrayBuffer,
-        timestamp: Date.now()
-      };
 
-      const request = store.put(data, romName);
+    const base64Data = await blobToBase64(blob);
+    const fileName = `${romName.replace(/[^a-zA-Z0-9._-]/g, '_')}.sav`;
+    const fullPath = `${SAVE_FOLDER}/${fileName}`;
 
-      request.onsuccess = () => {
-        console.log("[DB] Save successful");
-        resolve();
-      };
-      request.onerror = () => reject(request.error);
+    console.log(`[NativeFS] Writing to ${fullPath} via Kotlin Bridge...`);
+
+    await Filesystem.writeFile({
+      path: fullPath,
+      data: base64Data,
+      directory: Directory.Data, // Uses internal app storage (Safe, no extra permissions needed)
+      recursive: true // Automatically creates the folder
     });
+
+    console.log("[NativeFS] Save successful");
   } catch (err) {
-    console.error("Save State Error:", err);
+    console.error("Native Save Error:", err);
     throw err;
   }
 };
 
 export const loadStateFromDB = async (romName: string): Promise<Blob | null> => {
   try {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readonly');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.get(romName);
+    const fileName = `${romName.replace(/[^a-zA-Z0-9._-]/g, '_')}.sav`;
+    const fullPath = `${SAVE_FOLDER}/${fileName}`;
 
-      request.onsuccess = () => {
-        const result = request.result;
-        if (result && result.buffer) {
-          console.log(`[DB] Loaded state for ${romName}. Size: ${result.buffer.byteLength} bytes`);
-          // Convert the stored ArrayBuffer back to a Blob for the emulator
-          const blob = new Blob([result.buffer], { type: 'application/octet-stream' });
-          resolve(blob);
-        } else {
-          console.log(`[DB] No save found for ${romName}`);
-          resolve(null);
-        }
-      };
-      request.onerror = () => reject(request.error);
-    });
+    console.log(`[NativeFS] Attempting to load from ${fullPath}...`);
+
+    try {
+      const result = await Filesystem.readFile({
+        path: fullPath,
+        directory: Directory.Data
+      });
+
+      if (result.data) {
+        // Capacitor might return data as a string (base64)
+        const base64 = typeof result.data === 'string' ? result.data : String(result.data);
+        const blob = base64ToBlob(base64);
+        console.log(`[NativeFS] Loaded state. Size: ${blob.size} bytes`);
+        return blob;
+      }
+    } catch (readErr) {
+      // If file doesn't exist, Filesystem throws an error. We treat this as "no save found".
+      console.log(`[NativeFS] No save file found for ${romName}`);
+      return null;
+    }
+    
+    return null;
   } catch (err) {
-    console.error("Load State Error:", err);
+    console.error("Native Load Error:", err);
     throw err;
   }
 };

@@ -17,6 +17,7 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
   const [status, setStatus] = useState<EmulatorStatus>(EmulatorStatus.LOADING);
   const [menuOpen, setMenuOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [isBusy, setIsBusy] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -25,20 +26,35 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
 
   const toggleFullscreen = async () => {
     try {
-      if (!document.fullscreenElement) {
-        const elem = document.documentElement;
+      const doc = document as any;
+      const elem = document.body as any;
+
+      const isFullscreen = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
+
+      if (!isFullscreen) {
         if (elem.requestFullscreen) {
           await elem.requestFullscreen();
-        } else if ((elem as any).webkitRequestFullscreen) {
-          await (elem as any).webkitRequestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+          await elem.webkitRequestFullscreen();
+        } else if (elem.mozRequestFullScreen) {
+          await elem.mozRequestFullScreen();
+        } else if (elem.msRequestFullscreen) {
+          await elem.msRequestFullscreen();
         }
       } else {
-        if (document.exitFullscreen) {
-          await document.exitFullscreen();
+        if (doc.exitFullscreen) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+          await doc.webkitExitFullscreen();
+        } else if (doc.mozCancelFullScreen) {
+          await doc.mozCancelFullScreen();
+        } else if (doc.msExitFullscreen) {
+          await doc.msExitFullscreen();
         }
       }
     } catch (err) {
-      // Silently fail
+      console.warn("Fullscreen toggle failed:", err);
+      showToast("Fullscreen Error");
     }
   };
 
@@ -83,10 +99,14 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
       }
 
       try {
-        // IMPORTANT: Pass the File object directly to preserve filename
+        // IMPORTANT: Sanitize filename to prevent FS errors in Emscripten
+        // Special characters or spaces can break the internal virtual filesystem paths
+        const cleanName = rom.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const safeFile = new File([rom.file], cleanName, { type: rom.file.type });
+
         emulatorInstance.current = await window.Nostalgist.launch({
           element: canvasRef.current,
-          rom: rom.file, 
+          rom: safeFile, 
           core: 'snes9x', 
           runForever: true,
           style: {
@@ -128,9 +148,10 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
   }, [rom]); 
 
   const handleSaveState = async () => {
-    if (!emulatorInstance.current) return;
+    if (!emulatorInstance.current || isBusy) return;
     
     try {
+      setIsBusy(true);
       showToast("Saving...");
       
       const result = await emulatorInstance.current.saveState();
@@ -142,38 +163,27 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
       let blobCandidate = result;
 
       // Handle object return type { state: Blob, thumbnail: ... }
-      // This fixes the "Core returned object: {"state":{},...}" error
       if (result && typeof result === 'object' && 'state' in result) {
          blobCandidate = result.state;
       }
 
       let stateBlob: Blob;
 
-      // Robust check for return types (Blob vs Uint8Array vs Object)
       if (blobCandidate instanceof Blob) {
         stateBlob = blobCandidate;
       } else if (blobCandidate instanceof Uint8Array || blobCandidate instanceof ArrayBuffer) {
-        // Cast to any to satisfy TS compiler regarding ArrayBufferLike vs ArrayBuffer in Blob constructor
         stateBlob = new Blob([blobCandidate as any]);
       } else {
-         // If it's a generic object, it might be an error or a wrapper.
-         console.error("Save returned non-standard object:", result);
-         
          const json = JSON.stringify(result);
          throw new Error(`Core returned object: ${json.substring(0, 50)}...`);
       }
 
       // VALIDATION
       if (stateBlob.size < 1024) {
-        let errorContent = "";
-        try {
-           errorContent = await stateBlob.text();
-        } catch(e) { /* ignore */ }
-        console.error(`Core produced invalid state (${stateBlob.size} bytes). Content:`, errorContent);
         throw new Error(`Save Failed: File too small (${stateBlob.size}b)`);
       }
 
-      // Save to IndexedDB
+      // Save to IndexedDB (Using the original rom name for DB key to keep consistency)
       await saveStateToDB(rom.name, stateBlob);
       
       showToast("State Saved!");
@@ -181,13 +191,16 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
     } catch (e: any) {
       console.error("Save failed:", e);
       showToast("Save Failed!");
+    } finally {
+      setIsBusy(false);
     }
   };
 
   const handleLoadState = async () => {
-    if (!emulatorInstance.current) return;
+    if (!emulatorInstance.current || isBusy) return;
     
     try {
+      setIsBusy(true);
       showToast("Loading...");
       
       const stateBlob = await loadStateFromDB(rom.name);
@@ -207,6 +220,8 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
     } catch (e) {
       console.error("Load failed:", e);
       showToast("Load Failed!");
+    } finally {
+      setIsBusy(false);
     }
   };
 
@@ -287,15 +302,17 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
               <div className="grid grid-cols-2 gap-2">
                 <button 
                   onClick={handleSaveState}
-                  className="bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg font-bold text-xs uppercase transition-transform active:scale-95"
+                  disabled={isBusy}
+                  className={`bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg font-bold text-xs uppercase transition-transform active:scale-95 ${isBusy ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  Save State
+                  {isBusy ? '...' : 'Save'}
                 </button>
                 <button 
                   onClick={handleLoadState}
-                  className="bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg font-bold text-xs uppercase transition-transform active:scale-95"
+                  disabled={isBusy}
+                  className={`bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg font-bold text-xs uppercase transition-transform active:scale-95 ${isBusy ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  Load State
+                  {isBusy ? '...' : 'Load'}
                 </button>
               </div>
 
