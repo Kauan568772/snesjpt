@@ -153,7 +153,8 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
       if (blobCandidate instanceof Blob) {
         stateBlob = blobCandidate;
       } else if (blobCandidate instanceof Uint8Array || blobCandidate instanceof ArrayBuffer) {
-        stateBlob = new Blob([blobCandidate]);
+        // Cast to any to satisfy TS compiler regarding ArrayBufferLike vs ArrayBuffer in Blob constructor
+        stateBlob = new Blob([blobCandidate as any]);
       } else {
          // If it's a generic object, it might be an error or a wrapper.
          console.error("Save returned non-standard object:", result);
