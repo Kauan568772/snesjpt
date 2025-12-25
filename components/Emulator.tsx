@@ -228,21 +228,59 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
   const handleInput = (code: string, key: string, keyCode: number, pressed: boolean) => {
     if (menuOpen) return;
 
-    const eventType = pressed ? 'keydown' : 'keyup';
-    const event = new KeyboardEvent(eventType, {
-      code: code,
-      key: key,
-      keyCode: keyCode,
-      which: keyCode,
-      bubbles: true,
-      cancelable: true,
-      view: window
-    });
-    
-    Object.defineProperty(event, 'keyCode', { get: () => keyCode });
-    Object.defineProperty(event, 'which', { get: () => keyCode });
+    // Send input directly to Nostalgist instance first
+    if (emulatorInstance.current) {
+      try {
+        // Try direct input method if available
+        if (emulatorInstance.current.input) {
+          emulatorInstance.current.input({
+            code: code,
+            key: key,
+            keyCode: keyCode,
+            pressed: pressed
+          });
+        }
+        
+        // Also try sending to the canvas directly
+        if (canvasRef.current) {
+          const eventType = pressed ? 'keydown' : 'keyup';
+          const event = new KeyboardEvent(eventType, {
+            code: code,
+            key: key,
+            keyCode: keyCode,
+            which: keyCode,
+            bubbles: true,
+            cancelable: true,
+            view: window
+          });
+          
+          Object.defineProperty(event, 'keyCode', { get: () => keyCode });
+          Object.defineProperty(event, 'which', { get: () => keyCode });
+          
+          // Dispatch to canvas
+          canvasRef.current.dispatchEvent(event);
+        }
+        
+        // Fallback: dispatch to document
+        const eventType = pressed ? 'keydown' : 'keyup';
+        const event = new KeyboardEvent(eventType, {
+          code: code,
+          key: key,
+          keyCode: keyCode,
+          which: keyCode,
+          bubbles: true,
+          cancelable: true,
+          view: window
+        });
+        
+        Object.defineProperty(event, 'keyCode', { get: () => keyCode });
+        Object.defineProperty(event, 'which', { get: () => keyCode });
 
-    document.dispatchEvent(event);
+        document.dispatchEvent(event);
+      } catch (error) {
+        console.warn('Input handling error:', error);
+      }
+    }
   };
 
   return (
@@ -339,7 +377,7 @@ const Emulator: React.FC<EmulatorProps> = ({ rom, onExit, onError }) => {
       </div>
 
       <div className={`transition-opacity duration-300 ${menuOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-         <VirtualController onInput={handleInput} />
+         <VirtualController onInput={handleInput} emulatorInstance={emulatorInstance.current} />
       </div>
 
     </div>

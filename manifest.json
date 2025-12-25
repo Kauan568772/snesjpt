@@ -1,6 +1,6 @@
 {
   "name": "RetroPocket SNES",
-  "short_name": "SNES Mobile",
+  "short_name": "RetroPocket",
   "start_url": "/",
   "display": "fullscreen",
   "orientation": "landscape",

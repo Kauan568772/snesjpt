@@ -1,31 +1,78 @@
-import React, { useCallback, useRef } from 'react';
-import { BUTTONS } from '../constants';
+import React, { useCallback, useRef, useState } from 'react';
+import { BUTTONS, ALTERNATIVE_CONTROLLER_MAP } from '../constants';
 
 interface VirtualControllerProps {
   onInput: (code: string, key: string, keyCode: number, pressed: boolean) => void;
+  emulatorInstance?: any;
 }
 
-const VirtualController: React.FC<VirtualControllerProps> = ({ onInput }) => {
+const VirtualController: React.FC<VirtualControllerProps> = ({ onInput, emulatorInstance }) => {
   const activeButtons = useRef<Set<string>>(new Set());
   const dpadRef = useRef<HTMLDivElement>(null);
+  const [useAlternativeMapping, setUseAlternativeMapping] = useState(false);
 
   const vibrate = (duration: number = 8) => {
     if (navigator.vibrate) navigator.vibrate(duration);
   };
 
+  const getButtonConfig = (btnId: string) => {
+    if (useAlternativeMapping) {
+      return (ALTERNATIVE_CONTROLLER_MAP as any)[btnId] || (BUTTONS as any)[btnId];
+    }
+    return (BUTTONS as any)[btnId];
+  };
+
+  const testButton = (btnId: string) => {
+    const config = getButtonConfig(btnId);
+    console.log(`Testing button ${btnId}:`, config);
+    
+    // Test input
+    triggerInput(btnId, true);
+    setTimeout(() => {
+      triggerInput(btnId, false);
+    }, 200);
+  };
+
   const triggerInput = (btnId: string, pressed: boolean) => {
-    const btn = BUTTONS[btnId];
-    if (!btn) return;
+    const btn = getButtonConfig(btnId);
+    if (!btn) {
+      console.warn(`Button ${btnId} not found in mapping`);
+      return;
+    }
 
     if (pressed) {
       if (!activeButtons.current.has(btnId)) {
         activeButtons.current.add(btnId);
+        
+        // Send input to Nostalgist directly if available
+        if (emulatorInstance && emulatorInstance.input) {
+          emulatorInstance.input({
+            code: btn.code,
+            key: btn.key,
+            keyCode: btn.keyCode,
+            pressed: true
+          });
+        }
+        
+        // Also send via traditional keyboard event
         onInput(btn.code, btn.key, btn.keyCode, true);
         vibrate(10);
       }
     } else {
       if (activeButtons.current.has(btnId)) {
         activeButtons.current.delete(btnId);
+        
+        // Send input release to Nostalgist directly if available
+        if (emulatorInstance && emulatorInstance.input) {
+          emulatorInstance.input({
+            code: btn.code,
+            key: btn.key,
+            keyCode: btn.keyCode,
+            pressed: false
+          });
+        }
+        
+        // Also send via traditional keyboard event
         onInput(btn.code, btn.key, btn.keyCode, false);
       }
     }
@@ -106,6 +153,31 @@ const VirtualController: React.FC<VirtualControllerProps> = ({ onInput }) => {
 
   return (
     <div className="absolute inset-0 pointer-events-none z-50 flex flex-col justify-between font-sans safe-area-inset pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      
+      {/* Debug Panel */}
+      <div className="w-full flex justify-end px-2 pt-2 pointer-events-auto">
+        <div className="bg-black/80 backdrop-blur-md border border-white/20 rounded-lg p-2 flex items-center gap-2">
+          <button
+            onClick={() => setUseAlternativeMapping(!useAlternativeMapping)}
+            className={`px-3 py-1 rounded text-xs font-bold transition-colors ${
+              useAlternativeMapping 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-600 text-gray-200 hover:bg-gray-500'
+            }`}
+          >
+            {useAlternativeMapping ? 'Alt Layout' : 'Default Layout'}
+          </button>
+          <button
+            onClick={() => testButton('A')}
+            className="px-3 py-1 rounded bg-red-600 text-white text-xs font-bold hover:bg-red-500 transition-colors"
+          >
+            Test A
+          </button>
+          <div className="text-xs text-gray-400">
+            {emulatorInstance ? '🎮 Connected' : '⚠️ No Emulator'}
+          </div>
+        </div>
+      </div>
       
       {/* --- SHOULDER BUTTONS (Simple Rectangles) --- */}
       <div className="w-full flex justify-between px-2 pt-2">

@@ -49,11 +49,23 @@ jobs:
           # Sync config (copies web assets to android native project)
           npx cap sync android
 
+      - name: Configure Gradle for Java 25 compatibility
+        run: |
+          cd android
+          # Update gradle wrapper to version compatible with Java 25
+          sed -i 's/gradle-8\.2\.1/gradle-8.9/g' gradle/wrapper/gradle-wrapper.properties || true
+          # Update gradle.properties for better compatibility
+          echo "org.gradle.jvmargs=-Xmx2048m --enable-native-access=ALL-UNNAMED -Dfile.encoding=UTF-8" >> gradle.properties
+          echo "android.compileSdkVersion=34" >> gradle.properties
+          echo "android.buildToolsVersion=34.0.0" >> gradle.properties
+          echo "android.targetSdkVersion=34" >> gradle.properties
+
       - name: Build Android APK (Debug)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          # Clean and build
+          ./gradlew clean assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
