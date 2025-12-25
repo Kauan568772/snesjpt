@@ -55,10 +55,13 @@ npm run build        # Build para produção
 ```
 ├── src/                    # Código fonte
 ├── android/                # Projeto Android (Capacitor)
+├── app/                    # Código nativo customizado
 ├── .github/workflows/      # CI/CD
 ├── dist/                   # Build output
 └── package.json            # Dependências
 ```
+
+**📖 Veja [ANDROID-STRUCTURE.md](ANDROID-STRUCTURE.md) para explicação detalhada das pastas `android` e `app`**
 
 ## 🎯 Funcionalidades dos Controles
 
