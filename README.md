@@ -1,33 +1,70 @@
 # RetroPocket SNES
 
-Um emulador de SNES otimizado para dispositivos móveis, rodando diretamente no navegador via WebAssembly (Nostalgist.js / SNES9x 2010).
+Um emulador SNES completo para dispositivos móveis Android, usando Nostalgist.js (SNES9x) com controles táteis otimizados.
 
-## 📱 Como Instalar (PWA)
+## 🎮 Características
 
-Este projeto é um **Progressive Web App (PWA)**. Você pode instalá-lo no seu celular sem precisar da loja de aplicativos.
+- ✅ **Emulação SNES completa** via Nostalgist.js
+- ✅ **Controles táteis responsivos** com feedback visual
+- ✅ **Mapeamentos duplos** de botões para melhor compatibilidade
+- ✅ **Save States** via IndexedDB
+- ✅ **APK nativo Android** via Capacitor
+- ✅ **CI/CD automático** via GitHub Actions
 
-1. Acesse o site no **Chrome (Android)** ou **Safari (iOS)**.
-2. Toque em **Compartilhar** (iOS) ou no **Menu** (Android).
-3. Selecione **"Adicionar à Tela de Início"**.
-4. Abra o app criado na sua tela inicial.
+## 🕹️ Controles
 
-## 🤖 Como Gerar o APK (Android)
+### Layout Padrão
+- **A, B, X, Y**: Ações principais
+- **L, R**: Botões de ombro
+- **SELECT, START**: Botões de menu
+- **D-PAD**: Movimentação (toque e arraste)
 
-Devido a restrições de exportação, o arquivo de workflow está na raiz como `build.yml`.
+### Layout Alternativo
+- **A, B, X, Y**: Mapeamento alternativo (J, K, U, I)
+- **L, R**: Botões de ombro alternativos (O, P)
+- **SELECT**: Espaço
+- **START**: Enter
 
-### Passo a Passo no GitHub:
+## 📱 Instalação APK
 
-1. Exporte este projeto para o GitHub.
-2. No GitHub, crie a estrutura de pastas `.github/workflows/`.
-3. Mova o arquivo `build.yml` para dentro dessa pasta (ex: `.github/workflows/build.yml`).
-4. Vá para a aba **Actions** no GitHub.
-5. Selecione o workflow **Build Android APK**.
-6. Clique em **Run workflow**.
-7. Aguarde o processo terminar e baixe o APK na seção **Artifacts**.
+### Método 1: GitHub Actions (Automático)
+1. Faça push para repositório GitHub
+2. Vá para **Actions** → **Build Android APK**
+3. Aguarde e baixe o APK em **Artifacts**
 
-## 🎮 Controles
+### Método 2: Build Local
+```bash
+npm install
+npm run build
+npx cap add android
+npx cap sync android
+npx cap open android
+# Build APK no Android Studio
+```
 
-- **D-PAD**: Movimentação (Toque e arraste).
-- **A, B, X, Y**: Ações.
-- **L, R**: Botões de ombro (Cantos superiores da tela).
-- **START, SELECT**: Menu central.
+## 🛠️ Desenvolvimento
+
+```bash
+npm install          # Instalar dependências
+npm run dev          # Servidor de desenvolvimento
+npm run build        # Build para produção
+```
+
+## 📁 Estrutura
+
+```
+├── src/                    # Código fonte
+├── android/                # Projeto Android (Capacitor)
+├── .github/workflows/      # CI/CD
+├── dist/                   # Build output
+└── package.json            # Dependências
+```
+
+## 🎯 Funcionalidades dos Controles
+
+- **Painel de Debug**: Teste botões e alterne layouts
+- **Feedback Tátil**: Vibração em botões pressionados
+- **Zona Morta Otimizada**: D-PAD responsivo
+- **Múltiplos Inputs**: Eventos para Nostalgist.js + fallback
+
+**Desenvolvido com React + TypeScript + Capacitor + Nostalgist.js**

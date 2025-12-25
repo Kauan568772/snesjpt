@@ -1,5 +1,0 @@
-{
-  "name": "RetroPocket SNES",
-  "description": "A fully functional, mobile-optimized SNES emulator running directly in your browser using WebAssembly.",
-  "requestFramePermissions": []
-}
